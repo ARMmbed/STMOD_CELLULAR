@@ -22,19 +22,61 @@
 #include "gpio_api.h"
 #include "mbed_trace.h"
 #include "DigitalOut.h"
+#include "QUECTEL_UG96_CellularPower.h"
 
 #define TRACE_GROUP "CELL"
 
 using namespace mbed;
 
+namespace mbed {
+class STModCellular_CellularPower: public QUECTEL_UG96_CellularPower {
+    public:
+        STModCellular_CellularPower(ATHandler &atHandler): QUECTEL_UG96_CellularPower(atHandler) {}
+        ~STModCellular_CellularPower() {}
+
+        nsapi_error_t on() {
+            nsapi_error_t err = QUECTEL_UG96_CellularPower::on();
+            if (err == 0) {
+                DigitalOut powerkey(MBED_CONF_STMOD_CELLULAR_POWER);
+                powerkey.write(1);
+                wait_ms(250);
+                powerkey.write(0);
+
+                // wait for RDY
+                _at.lock();
+                _at.set_at_timeout(5000);
+                _at.set_stop_tag("RDY");
+                bool rdy = _at.consume_to_stop_tag();
+                _at.restore_at_timeout();
+                _at.set_stop_tag(NULL);
+                tr_debug("Modem %sready to receive AT commands", rdy?"":"NOT ");
+
+                // enable CTS/RTS flowcontrol
+                _at.cmd_start("AT+IFC=");
+                _at.write_int(2);
+                _at.write_int(2);
+                _at.cmd_stop_read_resp();
+                tr_debug("Flow control turned ON");
+
+                _at.unlock();
+            }
+            return err;
+        }
+
+        nsapi_error_t off() {
+            _at.cmd_start("AT+QPOWD");
+            _at.cmd_stop();
+            wait_ms(1000);
+            // should wait for POWERED DOWN with a time out up to 65 second according to the manual.
+            // we cannot afford such a long wait though.
+            return QUECTEL_UG96_CellularPower::off();
+        }
+};
+};
+
 STModCellular::STModCellular(FileHandle *fh) : QUECTEL_UG96(fh)
 {
-    CellularPower *power = open_power();
-    // make sure the modem is off first
-    power->off();
-
     DigitalOut reset(MBED_CONF_STMOD_CELLULAR_RESET);
-    DigitalOut powerkey(MBED_CONF_STMOD_CELLULAR_POWER);
     DigitalOut simsel0(MBED_CONF_STMOD_CELLULAR_SIMSEL0);
     DigitalOut simsel1(MBED_CONF_STMOD_CELLULAR_SIMSEL1);
     DigitalOut mdmdtr(MBED_CONF_STMOD_CELLULAR_MDMDTR);
@@ -47,15 +89,13 @@ STModCellular::STModCellular(FileHandle *fh) : QUECTEL_UG96(fh)
     reset.write(1);
     wait_ms(250);
     reset.write(0);
-
-    powerkey.write(1);
-    wait_ms(250);
-    powerkey.write(0);
 }
 
 STModCellular::~STModCellular()
 {
-    CellularPower *power = open_power();
-    // make sure the modem is off first
-    power->off();
+}
+
+AT_CellularPower *STModCellular::open_power_impl(ATHandler &at)
+{
+    return new STModCellular_CellularPower(at);
 }

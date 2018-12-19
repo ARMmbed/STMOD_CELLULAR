@@ -26,6 +26,8 @@ class STModCellular : public QUECTEL_UG96 {
 public:
     STModCellular(FileHandle *fh);
     virtual ~STModCellular();
+
+    virtual AT_CellularPower *open_power_impl(ATHandler &at);
 };
 
 } // namespace mbed
