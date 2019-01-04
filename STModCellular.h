@@ -19,10 +19,11 @@
 #define STMOD_CELLULAR_H_
 
 #include "QUECTEL_UG96.h"
+#include "QUECTEL_BG96.h"
 
 namespace mbed {
 
-class STModCellular : public QUECTEL_UG96 {
+class STModCellular : public MBED_CONF_STMOD_CELLULAR_TYPE {
 public:
     STModCellular(FileHandle *fh);
     virtual ~STModCellular();

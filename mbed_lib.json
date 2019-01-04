@@ -1,6 +1,10 @@
 {
     "name": "stmod_cellular",
     "config": {
+        "type": {
+            "help": "STMOD+ connected modem can be either QUECTEL_UG96 or QUECTEL_BG96",
+            "value": "QUECTEL_BG96"
+        },
         "mdmdtr": {
             "help": "Modem's Data Terminal Ready",
             "value": "NC"

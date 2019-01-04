@@ -24,58 +24,87 @@
 #include "DigitalOut.h"
 #include "DigitalIn.h"
 #include "QUECTEL_UG96_CellularPower.h"
+#include "QUECTEL_BG96_CellularPower.h"
 
 #define TRACE_GROUP "CELL"
 
 using namespace mbed;
 
+#if (MBED_CONF_STMOD_CELLULAR_TYPE == QUECTEL_UG96)
+#define QUECTEL_CellularPower QUECTEL_UG96_CellularPower
+#elif (MBED_CONF_STMOD_CELLULAR_TYPE == QUECTEL_BG96)
+#define QUECTEL_CellularPower QUECTEL_BG96_CellularPower
+#endif
+
 namespace mbed {
-class STModCellular_CellularPower: public QUECTEL_UG96_CellularPower {
+class STModCellular_CellularPower: public QUECTEL_CellularPower {
     public:
-        STModCellular_CellularPower(ATHandler &atHandler): QUECTEL_UG96_CellularPower(atHandler) {}
+        STModCellular_CellularPower(ATHandler &atHandler): QUECTEL_CellularPower(atHandler) {}
         ~STModCellular_CellularPower() {}
 
         nsapi_error_t on() {
-            nsapi_error_t err = QUECTEL_UG96_CellularPower::on();
-            if (err == 0) {
-                DigitalOut powerkey(MBED_CONF_STMOD_CELLULAR_POWER);
-                powerkey.write(1);
-                wait_ms(250);
-                powerkey.write(0);
+            DigitalOut powerkey(MBED_CONF_STMOD_CELLULAR_POWER);
+            DigitalOut reset(MBED_CONF_STMOD_CELLULAR_RESET);
+            tr_debug("STMOD cellular modem power ON");
 
+            reset.write(1);
+            wait_ms(200);
+            reset.write(0);
+            wait_ms(150);
+            powerkey.write(1);
+            wait_ms(150);
+            powerkey.write(0);
+            /* Because modem status is not available on STMOD+ connector,
+               let's wait for Modem complete boot */
+            wait_ms(2300);
+
+            nsapi_error_t err = QUECTEL_CellularPower::on();
+            if (err == NSAPI_ERROR_OK) {
                 // wait for RDY
                 _at.lock();
                 _at.set_at_timeout(5000);
                 _at.set_stop_tag("RDY");
                 bool rdy = _at.consume_to_stop_tag();
-                _at.restore_at_timeout();
-                _at.set_stop_tag(NULL);
                 tr_debug("Modem %sready to receive AT commands", rdy?"":"NOT ");
+
+                _at.set_stop_tag("OK");
+                _at.cmd_start("AT+QCFG=\"stateurc/enable\",");
+                _at.write_int(0);
+                _at.cmd_stop_read_resp();
+                tr_debug("Modem URC disabled: %s", rdy?"OK":"KO");
 
                 // enable CTS/RTS flowcontrol
                 _at.cmd_start("AT+IFC=");
                 _at.write_int(2);
                 _at.write_int(2);
                 _at.cmd_stop_read_resp();
-                tr_debug("Flow control turned ON");
+                tr_debug("Flow control turned ON: %s", rdy?"OK":"KO");
+
+                _at.cmd_start("AT+IFC?");
+                _at.cmd_stop_read_resp();
+
+	            _at.restore_at_timeout();
+                _at.set_stop_tag(NULL);
 
                 _at.unlock();
             }
+
             return err;
         }
 
         nsapi_error_t off() {
+            tr_debug("STModCellular_CellularPower:off\r\n");
             _at.cmd_start("AT+QPOWD");
             _at.cmd_stop();
             wait_ms(1000);
             // should wait for POWERED DOWN with a time out up to 65 second according to the manual.
             // we cannot afford such a long wait though.
-            return QUECTEL_UG96_CellularPower::off();
+            return QUECTEL_CellularPower::off();
         }
 };
 };
 
-STModCellular::STModCellular(FileHandle *fh) : QUECTEL_UG96(fh)
+STModCellular::STModCellular(FileHandle *fh) : MBED_CONF_STMOD_CELLULAR_TYPE(fh)
 {
     DigitalOut reset(MBED_CONF_STMOD_CELLULAR_RESET);
     DigitalOut powerkey(MBED_CONF_STMOD_CELLULAR_POWER);
