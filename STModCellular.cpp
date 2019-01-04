@@ -22,6 +22,7 @@
 #include "gpio_api.h"
 #include "mbed_trace.h"
 #include "DigitalOut.h"
+#include "DigitalIn.h"
 #include "QUECTEL_UG96_CellularPower.h"
 
 #define TRACE_GROUP "CELL"
@@ -77,18 +78,26 @@ class STModCellular_CellularPower: public QUECTEL_UG96_CellularPower {
 STModCellular::STModCellular(FileHandle *fh) : QUECTEL_UG96(fh)
 {
     DigitalOut reset(MBED_CONF_STMOD_CELLULAR_RESET);
+    DigitalOut powerkey(MBED_CONF_STMOD_CELLULAR_POWER);
     DigitalOut simsel0(MBED_CONF_STMOD_CELLULAR_SIMSEL0);
     DigitalOut simsel1(MBED_CONF_STMOD_CELLULAR_SIMSEL1);
-    DigitalOut mdmdtr(MBED_CONF_STMOD_CELLULAR_MDMDTR);
+
+    /* Ensure PIN SIMs are set as input */
+    DigitalIn sim_reset(MBED_CONF_STMOD_CELLULAR_SIM_RESET);
+    DigitalIn sim_clk(MBED_CONF_STMOD_CELLULAR_SIM_CLK);
+    DigitalIn sim_data(MBED_CONF_STMOD_CELLULAR_SIM_DATA);
 
     // start with modem disabled
-    mdmdtr.write(0);
-    simsel0.write(MBED_CONF_STMOD_CELLULAR_SIM_SELECTION);
-    simsel1.write(0);
-
+    powerkey.write(0);
     reset.write(1);
-    wait_ms(250);
+    wait_ms(200);
     reset.write(0);
+    wait_ms(150);
+
+    wait_ms(50);
+    simsel0.write(MBED_CONF_STMOD_CELLULAR_SIM_SELECTION & 0x01);
+    simsel1.write(MBED_CONF_STMOD_CELLULAR_SIM_SELECTION & 0x02);
+    wait_ms(50);
 }
 
 STModCellular::~STModCellular()

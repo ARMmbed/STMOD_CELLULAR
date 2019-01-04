@@ -9,13 +9,25 @@
             "help": "Module sim select pin 0.",
             "value": "NC"
         },
+        "simsel1": {
+            "help": "Module sim select pin 1.",
+            "value": "NC"
+        },
         "sim_selection": {
             "help": "Module sim selection. 0 for plastic sim, 1 for esim.",
             "value": 0
         },
-        "simsel1": {
-            "help": "Module sim select pin 1.",
-            "value": "NC"
+        "sim_reset": {
+            "help": "Module sim reset pin. Used for sim selection sequence.",
+            "value": 0
+        },
+        "sim_clk": {
+            "help": "Module sim clock pin. Used for sim selection sequence..",
+            "value": 0
+        },
+        "sim_data": {
+            "help": "Module sim data pin. Used for sim selection sequence.",
+            "value": 0
         },
         "power": {
             "help": "Modem's power key.",
@@ -28,8 +40,11 @@
     },
     "target_overrides": {
         "DISCO_L496AG": {
-            "mdmdtr": "PA_0",
+            "mdmdtr": "NC",
             "power": "PD_3",
+            "sim_reset": "PC_7",
+            "sim_clk": "PA_4",
+            "sim_data": "PB_12",
             "simsel0": "PC_2",
             "simsel1": "PI_3",
             "sim_selection": 0,
