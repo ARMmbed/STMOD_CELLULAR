@@ -47,17 +47,26 @@ class STModCellular_CellularPower: public QUECTEL_UG96_CellularPower {
                 _at.set_at_timeout(5000);
                 _at.set_stop_tag("RDY");
                 bool rdy = _at.consume_to_stop_tag();
-                _at.restore_at_timeout();
-                _at.set_stop_tag(NULL);
                 tr_debug("Modem %sready to receive AT commands", rdy?"":"NOT ");
+                _at.unlock();
 
+                _at.lock();
                 // enable CTS/RTS flowcontrol
+                _at.set_stop_tag(mbed::OK);
+                _at.set_at_timeout(400);
                 _at.cmd_start("AT+IFC=");
                 _at.write_int(2);
                 _at.write_int(2);
                 _at.cmd_stop_read_resp();
-                tr_debug("Flow control turned ON");
 
+                err = _at.get_last_error();
+                if (err == NSAPI_ERROR_OK) {
+                    tr_debug("Flow control turned ON");
+                } else {
+                    tr_error("Failed to enable hw flow control");
+                }
+
+                _at.restore_at_timeout();
                 _at.unlock();
             }
             return err;
