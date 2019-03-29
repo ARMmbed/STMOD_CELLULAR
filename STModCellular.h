@@ -19,15 +19,22 @@
 #define STMOD_CELLULAR_H_
 
 #include "QUECTEL_UG96.h"
+#include "DigitalOut.h"
 
 namespace mbed {
 
 class STModCellular : public QUECTEL_UG96 {
+private:
+    DigitalOut m_powerkey;
+    DigitalOut m_reset;
+    DigitalOut m_simsel0;
+    DigitalOut m_simsel1;
+    DigitalOut m_mdmdtr;
 public:
     STModCellular(FileHandle *fh);
+    virtual nsapi_error_t soft_power_on();
+    virtual nsapi_error_t soft_power_off();
     virtual ~STModCellular();
-
-    virtual AT_CellularPower *open_power_impl(ATHandler &at);
 };
 
 } // namespace mbed
