@@ -18,26 +18,38 @@
 #include "STModCellular.h"
 #include "mbed_wait_api.h"
 #include "mbed_trace.h"
+#include "DigitalIn.h"
 
 #define TRACE_GROUP "CELL"
 
 using namespace mbed;
 
-STModCellular::STModCellular(FileHandle *fh) : QUECTEL_UG96(fh),
+STModCellular::STModCellular(FileHandle *fh) : STMOD_CELLULAR_MODEM(fh),
     m_powerkey(MBED_CONF_STMOD_CELLULAR_POWER),
     m_reset(MBED_CONF_STMOD_CELLULAR_RESET),
     m_simsel0(MBED_CONF_STMOD_CELLULAR_SIMSEL0),
     m_simsel1(MBED_CONF_STMOD_CELLULAR_SIMSEL1),
     m_mdmdtr(MBED_CONF_STMOD_CELLULAR_MDMDTR)
 {
-    // start with modem disabled
-    m_mdmdtr.write(0);
-    m_simsel0.write(MBED_CONF_STMOD_CELLULAR_SIM_SELECTION);
-    m_simsel1.write(0);
 
+    tr_debug("STModCellular creation\r\n");
+
+    /* Ensure PIN SIMs are set as input */
+    DigitalIn sim_reset(MBED_CONF_STMOD_CELLULAR_SIM_RESET);
+    DigitalIn sim_clk(MBED_CONF_STMOD_CELLULAR_SIM_CLK);
+    DigitalIn sim_data(MBED_CONF_STMOD_CELLULAR_SIM_DATA);
+
+    // start with modem disabled
+    m_powerkey.write(0);
     m_reset.write(1);
-    wait_ms(250);
+    wait_ms(200);
     m_reset.write(0);
+    wait_ms(150);
+
+    wait_ms(50);
+    m_simsel0.write(MBED_CONF_STMOD_CELLULAR_SIM_SELECTION & 0x01);
+    m_simsel1.write(MBED_CONF_STMOD_CELLULAR_SIM_SELECTION & 0x02);
+    wait_ms(50);
 }
 
 STModCellular::~STModCellular()
@@ -45,26 +57,65 @@ STModCellular::~STModCellular()
 }
 
 nsapi_error_t STModCellular::soft_power_on() {
-    nsapi_error_t err = QUECTEL_UG96::soft_power_on();
+    tr_debug("STMOD cellular modem power ON\r\n");
+
+#if (MBED_CONF_STMOD_CELLULAR_TYPE == STMOD_UG96)
+    tr_debug("Booting UG96\r\n");
+    m_reset.write(1);
+    wait_ms(200);
+    m_reset.write(0);
+    wait_ms(150);
+    m_powerkey.write(1);
+    wait_ms(150);
+    m_powerkey.write(0);
+    /* Because modem status is not available on STMOD+ connector,
+     * let's wait for Modem complete boot */
+    wait_ms(2300);
+#endif
+#if (MBED_CONF_STMOD_CELLULAR_TYPE == STMOD_BG96)
+    tr_debug("Booting BG96\r\n");
+    m_powerkey.write(1);
+    m_reset.write(1);
+    wait_ms(150);
+    m_powerkey.write(0);
+    m_reset.write(0);
+    wait_ms(100);
+    m_powerkey.write(1);
+    wait_ms(200);
+    m_powerkey.write(0);
+    wait_ms(5000);
+#endif
+
+    nsapi_error_t err = STMOD_CELLULAR_MODEM::soft_power_on();
     if (err != 0) {
         return err;
     }
-    m_powerkey.write(1);
-    wait_ms(250);
-    m_powerkey.write(0);
 
     // wait for RDY
     _at->lock();
     _at->set_at_timeout(5000);
     _at->set_stop_tag("RDY");
     bool rdy = _at->consume_to_stop_tag();
-    tr_debug("Modem %sready to receive AT commands", rdy?"":"NOT ");
     (void)rdy;
+
+    /*  Modem may send more bytes are RDY flag */
+    _at->flush();
+
+    /* Turn OFF ECHO before anything else */
+    _at->set_stop_tag(mbed::OK);
+    _at->cmd_start("ATE0");
+    _at->cmd_stop();
+    _at->consume_to_stop_tag();
+
     _at->restore_at_timeout();
     _at->unlock();
 
-#ifdef DEVICE_SERIAL_FC
+    tr_debug("Modem %sready to receive AT commands", rdy?"":"NOT ");
+
+#if DEVICE_SERIAL_FC
     if ((MBED_CONF_STMOD_CELLULAR_CTS != NC) && (MBED_CONF_STMOD_CELLULAR_RTS != NC)) {
+        tr_debug("Enable flow control\r\n");
+
         _at->lock();
         // enable CTS/RTS flowcontrol
         _at->set_stop_tag(mbed::OK);
@@ -73,37 +124,50 @@ nsapi_error_t STModCellular::soft_power_on() {
         _at->write_int(2);
         _at->write_int(2);
         _at->cmd_stop_read_resp();
-
         err = _at->get_last_error();
+        _at->unlock();
+
         if (err == NSAPI_ERROR_OK) {
             tr_debug("Flow control turned ON");
         } else {
             tr_error("Failed to enable hw flow control");
         }
-
-        _at->restore_at_timeout();
-        _at->unlock();
     }
 #endif
+
+    wait_ms(500);
+
+    _at->lock();
+    /*  Verify Flow Control settings */
+    _at->cmd_start("AT+IFC?");
+    _at->cmd_stop_read_resp();
+    _at->unlock();
+
     return err;
 }
+
 nsapi_error_t STModCellular::soft_power_off() {
     _at->cmd_start("AT+QPOWD");
     _at->cmd_stop();
     wait_ms(1000);
     // should wait for POWERED DOWN with a time out up to 65 second according to the manual.
     // we cannot afford such a long wait though.
-    return QUECTEL_UG96::soft_power_off();
+    return STMOD_CELLULAR_MODEM::soft_power_off();
 }
 
 #if MBED_CONF_STMOD_CELLULAR_PROVIDE_DEFAULT
 #include "UARTSerial.h"
 CellularDevice *CellularDevice::get_default_instance()
 {
+    tr_debug("MODEM default instance\r\n");
+
     static UARTSerial serial(MBED_CONF_STMOD_CELLULAR_TX, MBED_CONF_STMOD_CELLULAR_RX, MBED_CONF_STMOD_CELLULAR_BAUDRATE);
+#if defined (MBED_CONF_STMOD_CELLULAR_RTS) && defined(MBED_CONF_STMOD_CELLULAR_CTS)
+    tr_debug("STMOD_CELLULAR flow control: RTS %d CTS %d", MBED_CONF_STMOD_CELLULAR_RTS, MBED_CONF_STMOD_CELLULAR_CTS);
+    serial.set_flow_control(SerialBase::RTSCTS, MBED_CONF_STMOD_CELLULAR_RTS, MBED_CONF_STMOD_CELLULAR_CTS);
+#endif
     static STModCellular device(&serial);
     return &device;
 }
 #endif
-
 

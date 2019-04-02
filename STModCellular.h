@@ -19,11 +19,25 @@
 #define STMOD_CELLULAR_H_
 
 #include "QUECTEL_UG96.h"
+#include "QUECTEL_BG96.h"
 #include "DigitalOut.h"
+
+/* List of supported STMOD+ cellular expansion boards */
+#define STMOD_BG96 0
+#define STMOD_UG96 1
+
+
+#if (MBED_CONF_STMOD_CELLULAR_TYPE == STMOD_BG96)
+#define STMOD_CELLULAR_MODEM QUECTEL_BG96
+#endif
+
+#if (MBED_CONF_STMOD_CELLULAR_TYPE == STMOD_UG96)
+#define STMOD_CELLULAR_MODEM QUECTEL_UG96
+#endif
 
 namespace mbed {
 
-class STModCellular : public QUECTEL_UG96 {
+class STModCellular : public STMOD_CELLULAR_MODEM {
 private:
     DigitalOut m_powerkey;
     DigitalOut m_reset;
