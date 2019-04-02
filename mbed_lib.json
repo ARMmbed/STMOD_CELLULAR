@@ -1,6 +1,10 @@
 {
     "name": "stmod_cellular",
     "config": {
+        "type": {
+            "help": "STMOD+ connected modem can be either STMOD_UG96 or STMOD_BG96",
+            "value": "STMOD_BG96"
+        },
         "mdmdtr": {
             "help": "Modem's Data Terminal Ready",
             "value": "NC"
@@ -17,7 +21,19 @@
             "help": "Module sim select pin 1.",
             "value": "NC"
         },
-        "power": {
+        "sim_reset": {
+            "help": "Module sim reset pin. Used for sim selection sequence.",
+            "value": "NC"
+        },
+        "sim_clk": {
+            "help": "Module sim clock pin. Used for sim selection sequence..",
+            "value": "NC"
+        },
+        "sim_data": {
+            "help": "Module sim data pin. Used for sim selection sequence.",
+            "value": "NC"
+         },
+         "power": {
             "help": "Modem's power key.",
             "value": "NC"
         },
@@ -54,10 +70,13 @@
         "DISCO_L496AG": {
             "tx": "PB_6",
             "rx": "PG_10",
-            "rts": "NC",
-            "cts": "NC",
-            "mdmdtr": "PA_0",
+            "rts": "PG_12",
+            "cts": "PG_11",
+            "mdmdtr": "NC",
             "power": "PD_3",
+            "sim_reset": "PC_7",
+            "sim_clk": "PA_4",
+            "sim_data": "PB_12",
             "simsel0": "PC_2",
             "simsel1": "PI_3",
             "sim_selection": 0,
