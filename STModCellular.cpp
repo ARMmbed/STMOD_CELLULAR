@@ -18,7 +18,6 @@
 #include "STModCellular.h"
 #include "mbed_wait_api.h"
 #include "mbed_trace.h"
-#include "DigitalIn.h"
 
 #define TRACE_GROUP "CELL"
 
@@ -29,15 +28,12 @@ STModCellular::STModCellular(FileHandle *fh) : STMOD_CELLULAR_MODEM(fh),
     m_reset(MBED_CONF_STMOD_CELLULAR_RESET),
     m_simsel0(MBED_CONF_STMOD_CELLULAR_SIMSEL0),
     m_simsel1(MBED_CONF_STMOD_CELLULAR_SIMSEL1),
-    m_mdmdtr(MBED_CONF_STMOD_CELLULAR_MDMDTR)
+    m_mdmdtr(MBED_CONF_STMOD_CELLULAR_MDMDTR),
+    m_sim_reset(MBED_CONF_STMOD_CELLULAR_SIM_RESET),
+    m_sim_clk(MBED_CONF_STMOD_CELLULAR_SIM_CLK),
+    m_sim_data(MBED_CONF_STMOD_CELLULAR_SIM_DATA)
 {
-
     tr_debug("STModCellular creation\r\n");
-
-    /* Ensure PIN SIMs are set as input */
-    DigitalIn sim_reset(MBED_CONF_STMOD_CELLULAR_SIM_RESET);
-    DigitalIn sim_clk(MBED_CONF_STMOD_CELLULAR_SIM_CLK);
-    DigitalIn sim_data(MBED_CONF_STMOD_CELLULAR_SIM_DATA);
 
     // start with modem disabled
     m_powerkey.write(0);

@@ -21,6 +21,7 @@
 #include "QUECTEL_UG96.h"
 #include "QUECTEL_BG96.h"
 #include "DigitalOut.h"
+#include "DigitalIn.h"
 
 /* List of supported STMOD+ cellular expansion boards */
 #define STMOD_BG96 0
@@ -44,6 +45,9 @@ private:
     DigitalOut m_simsel0;
     DigitalOut m_simsel1;
     DigitalOut m_mdmdtr;
+    DigitalIn m_sim_reset;
+    DigitalIn m_sim_clk;
+    DigitalIn m_sim_data;
 public:
     STModCellular(FileHandle *fh);
     virtual nsapi_error_t soft_power_on();
