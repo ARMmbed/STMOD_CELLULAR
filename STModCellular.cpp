@@ -121,6 +121,7 @@ nsapi_error_t STModCellular::soft_power_on() {
         _at->write_int(2);
         _at->cmd_stop_read_resp();
         err = _at->get_last_error();
+        _at->restore_at_timeout();
         _at->unlock();
 
         if (err == NSAPI_ERROR_OK) {
