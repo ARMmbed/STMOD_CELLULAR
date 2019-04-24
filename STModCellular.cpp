@@ -133,11 +133,13 @@ nsapi_error_t STModCellular::soft_power_on() {
 
     wait_ms(500);
 
+#if MBED_CONF_CELLULAR_DEBUG_AT
     _at->lock();
     /*  Verify Flow Control settings */
     _at->cmd_start("AT+IFC?");
     _at->cmd_stop_read_resp();
     _at->unlock();
+#endif // MBED_CONF_CELLULAR_DEBUG_AT
 
     return err;
 }
