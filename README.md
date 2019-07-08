@@ -1,3 +1,8 @@
+# DEPRECATED
+
+This library will be deprecated because stmod cellular has been merged into mbed-os master branch,
+under mbed-os/components/cellular/COMPONENT_STMOD_CELLULAR. It will be released in mbed-os 15.4.
+
 # STMOD CELLULAR library
 
 This library allows enabling the cellular module that is connected to the STMOD+ connector of the board.
